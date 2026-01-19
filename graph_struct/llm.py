@@ -1,11 +1,13 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
 from autogen_ext.models.openai import OpenAIChatCompletionClient
 from autogen_core.models import ModelInfo
+from dotenv import load_dotenv
 import os
 
+load_dotenv()
 gemini_llm_model = OpenAIChatCompletionClient(
     model="openai/gpt-oss-120b",
-    api_key="REMOVED",
+    api_key=os.getenv("OPENAI_API_KEY"),
     base_url="https://api.groq.com/openai/v1",
     model_info=ModelInfo(
         model_name="llama-3.1-8b-instant",

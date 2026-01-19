@@ -77,5 +77,3 @@ if user_input:
     st.session_state.messages.append(
         {"role": "assistant", "content": assistant_reply}
     )
-
-    # Optional: reset uploader after send
