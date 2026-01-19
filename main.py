@@ -1,6 +1,7 @@
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 from typing import Optional
+from RAG import rag
 from graph_struct import workflow
 import shutil
 import os
@@ -19,10 +20,13 @@ async def chat(query: str = Form(...),
     pdf_path = os.path.join(UPLOAD_DIR, file.filename)
     with open(pdf_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
-  result = workflow.Workflow(query)
+    rag.embed_pdf(pdf_path)
+  result = await workflow.Workflow(query)
+  print(result)
   return JSONResponse(
         {
-            "response": result["intent_type"],
+            "intent": result["intent_type"],
+            "response":result["response"].content,
             "pdf_received": bool(file),
         }
     )
