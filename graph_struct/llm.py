@@ -25,6 +25,3 @@ gemini_llm_model = OpenAIChatCompletionClient(
 #     temperature=0,
 #     google_api_key=os.getenv("GOOGLE_API_KEY")
 # )
-
-
-#REMOVED
