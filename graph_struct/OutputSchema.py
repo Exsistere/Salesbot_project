@@ -1,5 +1,5 @@
-from pydantic import BaseModel
-from typing import Literal
+from pydantic import BaseModel, EmailStr, Field
+from typing import Literal, Optional
 
 
 class GuardrailIntent(BaseModel):
@@ -7,3 +7,14 @@ class GuardrailIntent(BaseModel):
 
 class MetaClassifier(BaseModel):
     meta_query_type: Literal["SALES", "BOOKING"]
+
+class BookingInfo(BaseModel):
+    name: Optional[str] = Field(
+        description= "Name of the customer"
+    )
+    email: Optional[EmailStr] = Field(
+        description="Email address of the customer"
+    )
+    phone_number: Optional[str] = Field(
+        description="Phone number of the customer"
+    )

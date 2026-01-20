@@ -73,6 +73,15 @@ async def SalesNode(state: state.State):
     }
      
 
-def BookingNode(state: state.State):
+async def BookingNode(state: state.State):
     print("booking node")
-    pass
+    BOOKING_EXTRACT_PROMPT=prompts["booking_extraction"]["prompt"].replace("{query}", state["query"])
+    result = await llm.gemini_llm_model.create(messages=[UserMessage(content=BOOKING_EXTRACT_PROMPT, source="system")], json_output=OutputSchema.BookingInfo)
+    booking_details = OutputSchema.BookingInfo.model_validate_json(result.content)
+    print(booking_details)
+    BOOKING_RESPONSE_PROMPT = prompts["booking_response"]["prompt"].format(name=booking_details.name,email=booking_details.email,phone_number=booking_details.phone_number)
+    result = await llm.gemini_llm_model.create(messages=[UserMessage(content=BOOKING_RESPONSE_PROMPT, source="system")])
+    print(result)
+    return{
+        "response" : result
+    }
