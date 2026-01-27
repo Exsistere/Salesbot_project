@@ -19,7 +19,15 @@
     },
     "booking_extraction":{
         "description":"Extract booking details from user query",
-        "prompt":"You are an information extraction system.\n\nExtract the following fields from the user query.\nReturn ONLY valid JSON.\n\nSchema:\n{{\n  \"name\": null,\n  \"email\": null,\n  \"phone_number\": null\n}}\n\nQuery:\n{query}"
+        "prompt":"You are an information extraction system.\n\nExtract the following fields from the user query.\nReturn ONLY valid JSON.\n\nSchema:\n{{\n  \"name\": null,\n  \"email\": null,\n  \"phone_number\": null\n \"date\": null\n \"time\": null\n \"product\": null\n}}\n\nQuery:\n{query}."
+    },
+    "booking_followup":{
+        "description":"Ask for missing booking details",
+        "prompt":"You are a booking follow up agent. \n\nAsk the user about missing follow up details using the reference questions \nMissing details:{missing_fields} \n referce questions: {{\"name\":\"your name\",\"email\":\"your email address\",\"phone_number\":\"your phone number\",\"date\":\"the booking date\",\"time\":\"the preferred time\",\"product\":\"the product you want\"}}"
+    },
+    "booking_classifier":{
+        "description": "classifies booking query into END or FOLLOWUP",
+        "prompt": "You are a booking query classifier. \n\n FOLLOWUP: User provides more booking details like time, date, name, emaile, phone number \n END: User wishes to provide no more details. \n\nInstructions: Classify the following query into FOLLOWUP or END\n\n Query:\n{query}"
     },
     "booking_response": {
         "description": "Respond after booking info is collected",

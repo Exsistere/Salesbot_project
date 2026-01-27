@@ -73,15 +73,57 @@ async def SalesNode(state: state.State):
     }
      
 
-async def BookingNode(state: state.State):
-    print("booking node")
+async def LeadDetails(state: state.State):
     BOOKING_EXTRACT_PROMPT=prompts["booking_extraction"]["prompt"].replace("{query}", state["query"])
     result = await llm.gemini_llm_model.create(messages=[UserMessage(content=BOOKING_EXTRACT_PROMPT, source="system")], json_output=OutputSchema.BookingInfo)
     booking_details = OutputSchema.BookingInfo.model_validate_json(result.content)
-    print(booking_details)
-    BOOKING_RESPONSE_PROMPT = prompts["booking_response"]["prompt"].format(name=booking_details.name,email=booking_details.email,phone_number=booking_details.phone_number)
-    result = await llm.gemini_llm_model.create(messages=[UserMessage(content=BOOKING_RESPONSE_PROMPT, source="system")])
-    print(result)
+    return booking_details
+
+async def BookingNode(state: state.State):
+    print("booking extraction node")
+    BOOKING_EXTRACT_PROMPT=prompts["booking_extraction"]["prompt"].replace("{query}", state["query"])
+    result = await llm.gemini_llm_model.create(messages=[UserMessage(content=BOOKING_EXTRACT_PROMPT, source="system")], json_output=OutputSchema.LeadDetails)
+    booking_details = OutputSchema.LeadDetails.model_validate_json(result.content)
     return{
-        "response" : result
+        "response" : result,
+        "extracted_details": booking_details,
+        "active_flow": "booking"
+    }
+def route_from_start(state: state.State):
+    if state.get("active_flow") == "booking":
+        return "booking"
+    return "start"
+
+async def Booking_follow_up(state: state.State):
+    extracted = dict(state["extracted_details"])
+    print(extracted)
+    missing_fields = [
+        field for field,value in extracted.items()
+        if value is None
+    ]
+    BOOKING_FOLLOWUP_PROMPT = prompts["booking_followup"]["prompt"].replace("{missing_fields}", ' '.join(missing_fields))
+    result = await llm.gemini_llm_model.create(messages=[UserMessage(content=BOOKING_FOLLOWUP_PROMPT, source="system")])
+    return{
+        "response": result
+    }
+    
+async def Booking_query_classifier(state: state.State):
+    BOOKING_CLASSIFIER_PROMPT = prompts["booking_classifier"]["prompt"].replace("{query}",state["query"])
+    result = await llm.gemini_llm_model.create(messages=[UserMessage(content=BOOKING_CLASSIFIER_PROMPT, source="system")], json_output=OutputSchema.BookingQueryClassifier)
+    type = OutputSchema.BookingQueryClassifier.model_validate_json(result.content).intent_type
+    return{
+        "booking_query_type": type
+    }
+
+def Booking_query_router(state: state.State):
+    return state["booking_query_type"]
+
+async def Booking_exit_response(state: state.State):   
+    booking_details = dict(state["extracted_details"])
+    BOOKING_RESPONSE_PROMPT = prompts["booking_response"]["prompt"].format(name=booking_details["name"],email=booking_details["email"],phone_number=booking_details["phone_number"])
+    result = await llm.gemini_llm_model.create(messages=[UserMessage(content=BOOKING_RESPONSE_PROMPT, source="system")])
+    print("active flow changed to start")
+    return{
+        "response": result.content,
+        "active_flow": "start"
     }

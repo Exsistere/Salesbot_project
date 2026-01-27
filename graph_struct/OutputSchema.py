@@ -18,3 +18,15 @@ class BookingInfo(BaseModel):
     phone_number: Optional[str] = Field(
         description="Phone number of the customer"
     )
+
+class LeadDetails(BaseModel):
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone_number: Optional[str] = None
+    date: Optional[str] = None
+    time: Optional[str] = None
+    product: Optional[str] = None
+
+class BookingQueryClassifier(BaseModel):
+    intent_type: Literal["FOLLOWUP","END"]
+

@@ -9,8 +9,18 @@ builder.add_node("attackquery", Nodes.attack_query)
 builder.add_node("classifier", Nodes.Classifier)
 builder.add_node("sales", Nodes.SalesNode)
 builder.add_node("booking", Nodes.BookingNode)
+builder.add_node("Booking_followup", Nodes.Booking_follow_up)
+builder.add_node("Booking_query_classifier",Nodes.Booking_query_classifier)
+builder.add_node("Booking_exit_response", Nodes.Booking_exit_response)
 
-builder.add_edge(START, "GuardRail")
+builder.add_conditional_edges(
+    START,
+    Nodes.route_from_start,
+    {
+        "booking":"booking",
+        "start":"GuardRail"
+    }
+)
 builder.add_conditional_edges(
     "GuardRail",
     Nodes.guardrail_router,
@@ -27,16 +37,40 @@ builder.add_conditional_edges(
         "BOOKING": "booking"
     }
 )
+builder.add_edge("booking", "Booking_followup")
+
+builder.add_edge("Booking_followup","Booking_query_classifier")
+builder.add_conditional_edges(
+    "Booking_query_classifier",
+    Nodes.Booking_query_router,
+    {
+        "FOLLOWUP": END,
+        "END": "Booking_exit_response"
+    }
+)
 builder.add_edge("sales",END)
-builder.add_edge("booking",END)
+builder.add_edge("Booking_exit_response",END)
 builder.add_edge("attackquery",END)
 
 grap = builder.compile()
 
 # def Workflow(user_input):
 #     return grap.invoke({"query":user_input})
-async def Workflow(user_input):
-    return await grap.ainvoke({"query":user_input})
+async def Workflow(user_input, state: state.State | None = None
+                   ):
+    if state is None:
+        state = {
+            "query": user_input
+            }
+    else:
+        state["query"] = user_input
+
+    return await grap.ainvoke(state)
+    
+    # if state is None:
+    #     return await grap.ainvoke({"query":user_input, "active_flow":"start"})
+    # else:
+    #     return await grap.ainvoke({"query":user_input})
 
 # # User input
 # query: str
