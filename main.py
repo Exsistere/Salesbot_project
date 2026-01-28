@@ -11,14 +11,15 @@ app = FastAPI()
 
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
-class ChatRequest(BaseModel):
-    query: str
-    state: Optional[Dict[str, Any]] = None  # Previous graph state
+# class ChatRequest(BaseModel):
+#     query: str
+#     state: Optional[Dict[str, Any]] = None  # Previous graph state
 
 @app.post("/chat")
 async def chat(
    query: str = Form(...),
-   state: Optional[str] = Form(None),
+   #state: Optional[str] = Form(None),
+   session_id: str = Form(...),
    file: Optional[UploadFile] = File(None),
 ):
   pdf_path = None
@@ -30,18 +31,15 @@ async def chat(
 
 
     
-  previous_state = json.loads(state) if state else None
-  result = await workflow.Workflow(query, state=previous_state)
+#   previous_state = json.loads(state) if state else None
+#   result = await workflow.Workflow(query, state=previous_state)
+  result = await workflow.Workflow(query, session_id=session_id)
   print(result)
   return JSONResponse(
         {
             "intent": result["intent_type"],
             "response":result["response"].content,
-            "extracted_details": (
-               result["extracted_details"].model_dump()
-               if result["extracted_details"]
-               else None
-            ),
+            "extracted_details": result.get("extracted_details"),
             "pdf_received": bool(file)
         }
     )

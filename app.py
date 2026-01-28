@@ -1,5 +1,6 @@
 import streamlit as st
 import requests
+import uuid
 import json
 BACKEND_URL = "http://localhost:8000/chat"
 
@@ -23,9 +24,11 @@ if "lead_details" not in st.session_state:
 if "lead_history" not in st.session_state:
     st.session_state.lead_history = []
 
-# Graph state to persist LangGraph / booking flow
-if "graph_state" not in st.session_state:
-    st.session_state.graph_state = None  # Will store full state returned from backend
+if "session_id" not in st.session_state:
+    st.session_state.session_id=str(uuid.uuid4())
+# # Graph state to persist LangGraph / booking flow
+# if "graph_state" not in st.session_state:
+#     st.session_state.graph_state = None  # Will store full state returned from backend
 
 # ------------------------------
 # sidebard 
@@ -91,22 +94,27 @@ if user_input:
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
             files = {}
-            data = {
-                "query": user_input,
-                "state": st.session_state.graph_state
-            }
+            # data = {
+            #     "query": user_input,
+            #     "state": st.session_state.graph_state
+            # }
 
-            graph_state_serializable = None
-            if st.session_state.graph_state:
-                try:
-                    graph_state_serializable = st.session_state.graph_state.model_dump()
-                except AttributeError:
-                    graph_state_serializable = st.session_state.graph_state
+            # graph_state_serializable = None
+            # if st.session_state.graph_state:
+            #     try:
+            #         graph_state_serializable = st.session_state.graph_state.model_dump()
+            #     except AttributeError:
+            #         graph_state_serializable = st.session_state.graph_state
 
-            # --- ALWAYS send form data ---
+            # # --- ALWAYS send form data ---
+            # data_to_send = {
+            #     "query": user_input,
+            #     "state": json.dumps(graph_state_serializable) if graph_state_serializable else None
+            # }
+
             data_to_send = {
                 "query": user_input,
-                "state": json.dumps(graph_state_serializable) if graph_state_serializable else None
+                "session_id": st.session_state.session_id
             }
 
             files = None
@@ -127,19 +135,20 @@ if user_input:
 
             if response.status_code == 200:
                 result = response.json()
-                st.session_state.graph_state = result.get("state", st.session_state.graph_state)
+                # st.session_state.graph_state = result.get("state", st.session_state.graph_state)
                 assistant_reply = (
                     f"Intent: {result['intent']}\n\n"
                     f"Response: {result['response']}"
                 )
 
                 extracted = result.get("extracted_details",{})
-                for key in st.session_state.lead_details:
-                    if extracted.get(key):
-                        st.session_state.lead_details[key] = extracted[key]
-                
                 if extracted:
-                    st.session_state.lead_history.append(extracted)
+                    for key in st.session_state.lead_details:
+                        if extracted.get(key):
+                            st.session_state.lead_details[key] = extracted[key]
+                
+                    if extracted:
+                        st.session_state.lead_history.append(extracted)
 
             else:
                 assistant_reply = "❌ Backend error."

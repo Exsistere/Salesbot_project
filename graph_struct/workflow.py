@@ -2,6 +2,9 @@ from langgraph.graph import StateGraph
 from langgraph.graph import START, END
 from graph_struct import Nodes
 from graph_struct import state
+from langgraph.checkpoint.memory import MemorySaver
+
+checkpointer = MemorySaver()
 
 builder = StateGraph(state.State)
 builder.add_node("GuardRail", Nodes.GuardRail)
@@ -50,24 +53,39 @@ builder.add_conditional_edges(
 )
 builder.add_edge("sales",END)
 builder.add_edge("Booking_exit_response",END)
-builder.add_edge("attackquery",END)
+builder.add_edge("attackquery",END) 
 
-grap = builder.compile()
+grap = builder.compile(checkpointer=checkpointer)
 
-# def Workflow(user_input):
-#     return grap.invoke({"query":user_input})
-async def Workflow(user_input, state: state.State | None = None
-                   ):
-    if state is None:
-        state = {
-            "query": user_input
+async def Workflow(user_input:str, session_id:str):
+    return await grap.ainvoke(
+        {"query": user_input},
+        config={
+            "configurable":{
+                "thread_id": session_id
             }
-    else:
-        state["query"] = user_input
+        }     
+    )
 
-    return await grap.ainvoke(state)
+
+
+# async def Workflow(user_input, state: state.State | None = None
+#                    ):
+#     if state is None:
+#         state = {
+#             "query": user_input
+#             }
+#     else:
+#         state["query"] = user_input
+
+#     return await grap.ainvoke(state)
     
-    # if state is None:
+
+
+
+
+
+    # if state is None: 
     #     return await grap.ainvoke({"query":user_input, "active_flow":"start"})
     # else:
     #     return await grap.ainvoke({"query":user_input})

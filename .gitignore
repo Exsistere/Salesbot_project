@@ -3,5 +3,3 @@ venv/
 uploads/
 data/
 .env
-main.py
-app.py
