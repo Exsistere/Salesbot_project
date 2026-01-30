@@ -26,6 +26,19 @@ if "lead_history" not in st.session_state:
 
 if "session_id" not in st.session_state:
     st.session_state.session_id=str(uuid.uuid4())
+
+if "audio_bytes" not in st.session_state:
+    st.session_state.audio_bytes = None
+
+if "audio_consumed" not in st.session_state:
+    st.session_state.audio_consumed = False
+
+if "audio_key" not in st.session_state:
+    st.session_state.audio_key = 0
+
+if "tts_cache" not in st.session_state:
+    st.session_state.tts_cache = {}  # msg_index -> audio_bytes
+
 # # Graph state to persist LangGraph / booking flow
 # if "graph_state" not in st.session_state:
 #     st.session_state.graph_state = None  # Will store full state returned from backend
@@ -62,9 +75,38 @@ with st.sidebar:
 # -----------------------------
 # Display chat history
 # -----------------------------
-for msg in st.session_state.messages:
+for idx, msg in enumerate(st.session_state.messages):
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
+
+        # Only show TTS for assistant messages
+        if msg["role"] == "assistant":
+            col1, col2 = st.columns([1, 6])
+            with col1:
+                if msg["content"].strip():
+                    if st.button("🔊 Read aloud", key=f"tts_{idx}"):
+                        if "tts_cache" not in st.session_state:
+                            st.session_state.tts_cache = {}
+
+                        if idx not in st.session_state.tts_cache:
+                            payload = {"text": msg["content"]}
+                            tts_resp = requests.post(
+                                "http://localhost:8000/tts",
+                                json=payload,
+                                headers={"Content-Type": "application/json"},
+                            )
+
+                            if tts_resp.status_code == 200:
+                                st.session_state.tts_cache[idx] = tts_resp.content
+                            else:
+                                st.error(f"TTS failed: {tts_resp.status_code}")
+
+            # Play cached audio if available
+            if "tts_cache" in st.session_state and idx in st.session_state.tts_cache:
+                st.audio(
+                    st.session_state.tts_cache[idx],
+                    format="audio/wav"
+                )
 
 # -----------------------------
 # File uploader (per turn)
@@ -75,14 +117,23 @@ uploaded_file = st.file_uploader(
     key="pdf_uploader"
 )
 
+
+audio_file = st.audio_input(
+    "Dictate",
+    key=f"audio_{st.session_state.audio_key}"
+    )
+if audio_file and st.session_state.audio_bytes is None:
+    st.session_state.audio_bytes = audio_file.read()  
+    st.session_state.audio_consumed = False
 # -----------------------------
 # Chat input
 # -----------------------------
 user_input = st.chat_input("Ask something about sales or booking...")
 
 
-if user_input:
+if user_input or (st.session_state.audio_bytes and not st.session_state.audio_consumed):
     # ---- Show user message
+    print(bool(audio_file))
     st.session_state.messages.append(
         {"role": "user", "content": user_input}
     )
@@ -117,16 +168,22 @@ if user_input:
                 "session_id": st.session_state.session_id
             }
 
-            files = None
+            files = {}
             if uploaded_file:
-                files = {
-                    "file": (
+                files["file"] = (
                         uploaded_file.name,
                         uploaded_file.getvalue(),
                         "application/pdf"
-                    )
-                }
-            
+                )
+            if st.session_state.audio_bytes and not st.session_state.audio_consumed:
+                files["audio"] = (
+                    "voice.wav",
+                    st.session_state.audio_bytes,
+                    audio_file.type
+                )
+                st.session_state.audio_consumed = True
+
+            if not files: files = None
             response = requests.post(
                 BACKEND_URL,
                 data=data_to_send,
@@ -134,6 +191,10 @@ if user_input:
             )
 
             if response.status_code == 200:
+                print("response recieved from backend",response.status_code)
+                st.session_state.audio_consumed = True
+                st.session_state.audio_bytes = None
+                st.session_state.audio_key += 1
                 result = response.json()
                 # st.session_state.graph_state = result.get("state", st.session_state.graph_state)
                 assistant_reply = (
@@ -159,5 +220,5 @@ if user_input:
     st.session_state.messages.append(
         {"role": "assistant", "content": assistant_reply}
     )
-    
+    # print("rerun hit")
     st.rerun()
